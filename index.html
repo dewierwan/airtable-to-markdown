@@ -131,13 +131,13 @@
               .join('\n') + "\n\n";
           }
           case 'ul': {
-            let ulMarkdown = "\n";
+            let ulMarkdown = "";
             Array.from(node.children).forEach(child => {
               if (child.tagName.toLowerCase() === 'li') {
                 ulMarkdown += convertNodeToMarkdown(child, indentLevel);
               }
             });
-            return ulMarkdown + "\n";
+            return ulMarkdown;
           }
           case 'ol': {
             let olMarkdown = "\n";
@@ -160,16 +160,21 @@
                 }
               }
             });
-            // Check for checkbox inside the list item.
-            let checkbox = node.querySelector('input[type="checkbox"]');
             let prefix = "";
-            if (checkbox) {
-              prefix = "  ".repeat(indent) + (checkbox.checked ? "- [x] " : "- [ ] ");
-              checkbox.remove();
-            } else if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'ol') {
-              prefix = "  ".repeat(indent) + (listIndex !== null ? listIndex + ". " : "1. ");
+            if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'ul' && node.parentElement.hasAttribute("data-checked")) {
+              let isChecked = node.parentElement.getAttribute("data-checked") === "true";
+              prefix = "  ".repeat(indent) + (isChecked ? "- [x] " : "- [ ] ");
             } else {
-              prefix = "  ".repeat(indent) + "- ";
+              // Check for checkbox inside the list item.
+              let checkbox = node.querySelector('input[type="checkbox"]');
+              if (checkbox) {
+                prefix = "  ".repeat(indent) + (checkbox.checked ? "- [x] " : "- [ ] ");
+                checkbox.remove();
+              } else if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'ol') {
+                prefix = "  ".repeat(indent) + (listIndex !== null ? listIndex + ". " : "1. ");
+              } else {
+                prefix = "  ".repeat(indent) + "- ";
+              }
             }
             let liContent = getInnerMarkdown(node, indent);
             return prefix + liContent.trim() + "\n";
