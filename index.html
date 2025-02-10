@@ -245,11 +245,11 @@
 
     // Copy Markdown output to clipboard when the button is clicked.
     copyButton.addEventListener('click', function() {
-      const markdown = outputElement.textContent;
+    const markdown = outputElement.textContent;
       navigator.clipboard.writeText(markdown).then(function() {
-        alert('Markdown copied to clipboard!');
+        // Copy succeeded; no popup shown.
       }).catch(function() {
-        alert('Failed to copy text.');
+        // Copy failed; no popup shown.
       });
     });
   </script>
