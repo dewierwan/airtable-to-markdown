@@ -235,6 +235,8 @@
       try {
         const markdown = convertToMarkdown(htmlContent);
         outputElement.textContent = markdown;
+        // Automatically copy to clipboard
+        navigator.clipboard.writeText(markdown);
       } catch (e) {
         outputElement.textContent = "Error converting content.";
       }
@@ -243,14 +245,9 @@
     // Listen for changes on the input (typing, paste, etc.).
     inputEditor.addEventListener('input', updateMarkdown);
 
-    // Copy Markdown output to clipboard when the button is clicked.
+    // Copy button as backup method
     copyButton.addEventListener('click', function() {
-    const markdown = outputElement.textContent;
-      navigator.clipboard.writeText(markdown).then(function() {
-        // Copy succeeded; no popup shown.
-      }).catch(function() {
-        // Copy failed; no popup shown.
-      });
+      navigator.clipboard.writeText(outputElement.textContent);
     });
   </script>
 </body>
