@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rich Text to Markdown Converter for Airtable</title>
+  <title>Airtable to Markdown</title>
   <link rel="icon" type="image/jpeg" href="paperclip.jpg">
   <style>
     /* Global Styles */
@@ -25,6 +25,9 @@
       font-weight: bold;
       margin-bottom: 10px;
       position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     /* Input Box Styling */
     .input-box .ql-editor {
@@ -52,6 +55,12 @@
       padding: 5px 10px;
       font-size: 0.9em;
     }
+    #pastedNotification {
+      color: #4CAF50;
+      font-size: 0.9em;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +76,7 @@
       <div class="label">
         Markdown Output
         <button id="copyButton">Copy</button>
+        <span id="pastedNotification">Copied!</span>
       </div>
       <!-- The output is rendered in a <pre> element for monospace display -->
       <pre id="output" class="output-content"></pre>
@@ -236,8 +246,14 @@
       try {
         const markdown = convertToMarkdown(htmlContent);
         outputElement.textContent = markdown;
-        // Automatically copy to clipboard
-        navigator.clipboard.writeText(markdown);
+        // Automatically copy to clipboard and show notification
+        navigator.clipboard.writeText(markdown).then(() => {
+          const notification = document.getElementById('pastedNotification');
+          notification.style.opacity = '1';
+          setTimeout(() => {
+            notification.style.opacity = '0';
+          }, 3000);
+        });
       } catch (e) {
         outputElement.textContent = "Error converting content.";
       }
