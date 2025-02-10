@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rich Text to Markdown Converter for Airtable</title>
+  <style>
+    /* Global Styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    .box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    /* Input Box Styling */
+    .input-box .ql-editor {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      min-height: 300px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    /* Output Box Styling */
+    .output-box .output-content {
+      background-color: #eee;
+      border: 1px solid #ccc;
+      min-height: 300px;
+      padding: 10px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    /* Copy Button positioned in the top right of output label */
+    #copyButton {
+      position: absolute;
+      right: 0;
+      top: 0;
+      padding: 5px 10px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left: Input Box -->
+    <div class="box input-box">
+      <div class="label">Airtable Rich Text Input</div>
+      <!-- The ql-editor acts as the contenteditable area where rich text is pasted -->
+      <div class="ql-editor" contenteditable="true"></div>
+    </div>
+    <!-- Right: Output Box -->
+    <div class="box output-box">
+      <div class="label">
+        Markdown Output
+        <button id="copyButton">Copy</button>
+      </div>
+      <!-- The output is rendered in a <pre> element for monospace display -->
+      <pre id="output" class="output-content"></pre>
+    </div>
+  </div>
+  
+  <script>
+    // Convert the entire HTML content into Markdown.
+    function convertToMarkdown(htmlContent) {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = htmlContent;
+      return convertNodeToMarkdown(tempDiv).trim();
+    }
+
+    // Recursively convert a node to Markdown.
+    function convertNodeToMarkdown(node, indentLevel = 0, listIndex = null) {
+      let markdown = "";
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        switch (tag) {
+          case 'h1':
+            return "# " + getInnerMarkdown(node, indentLevel) + "\n\n";
+          case 'h2':
+            return "## " + getInnerMarkdown(node, indentLevel) + "\n\n";
+          case 'h3':
+            return "### " + getInnerMarkdown(node, indentLevel) + "\n\n";
+          case 'strong':
+          case 'b':
+            return "**" + getInnerMarkdown(node, indentLevel) + "**";
+          case 'em':
+          case 'i': {
+            let text = getInnerMarkdown(node, indentLevel);
+            let trailingSpaces = '';
+            let mainText = text;
+            let match = text.match(/(\s+)$/);
+            if (match) {
+              trailingSpaces = match[1];
+              mainText = text.slice(0, -trailingSpaces.length);
+            }
+            return "*" + mainText + "*" + trailingSpaces;
+          }
+          case 's':
+          case 'strike':
+            return "~~" + getInnerMarkdown(node, indentLevel) + "~~";
+          case 'code':
+            return "`" + node.textContent + "`";
+          case 'pre':
+            return "```\n" + node.textContent + "\n```\n\n";
+          case 'blockquote': {
+            const blockquoteContent = getInnerMarkdown(node, indentLevel);
+            return blockquoteContent.split('\n')
+              .map(line => line.trim() ? "> " + line : line)
+              .join('\n') + "\n\n";
+          }
+          case 'ul': {
+            let ulMarkdown = "\n";
+            Array.from(node.children).forEach(child => {
+              if (child.tagName.toLowerCase() === 'li') {
+                ulMarkdown += convertNodeToMarkdown(child, indentLevel);
+              }
+            });
+            return ulMarkdown + "\n";
+          }
+          case 'ol': {
+            let olMarkdown = "\n";
+            let counter = 1;
+            Array.from(node.children).forEach(child => {
+              if (child.tagName.toLowerCase() === 'li') {
+                olMarkdown += convertNodeToMarkdown(child, indentLevel, counter);
+                counter++;
+              }
+            });
+            return olMarkdown + "\n";
+          }
+          case 'li': {
+            let indent = indentLevel;
+            node.classList.forEach(cls => {
+              if (cls.indexOf("ql-indent-") === 0) {
+                const level = parseInt(cls.substring(10));
+                if (!isNaN(level)) {
+                  indent = level;
+                }
+              }
+            });
+            // Check for checkbox inside the list item.
+            let checkbox = node.querySelector('input[type="checkbox"]');
+            let prefix = "";
+            if (checkbox) {
+              prefix = "  ".repeat(indent) + (checkbox.checked ? "- [x] " : "- [ ] ");
+              checkbox.remove();
+            } else if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'ol') {
+              prefix = "  ".repeat(indent) + (listIndex !== null ? listIndex + ". " : "1. ");
+            } else {
+              prefix = "  ".repeat(indent) + "- ";
+            }
+            let liContent = getInnerMarkdown(node, indent);
+            return prefix + liContent.trim() + "\n";
+          }
+          case 'a': {
+            const href = node.getAttribute("href") || "";
+            return "[" + getInnerMarkdown(node, indentLevel) + "](" + href + ")";
+          }
+          case 'br':
+            return "\n";
+          case 'p':
+            return getInnerMarkdown(node, indentLevel) + "\n\n";
+          case 'span': {
+            let text = getInnerMarkdown(node, indentLevel);
+            // Check classes for formatting
+            let isBold = node.classList.contains("ql-bold");
+            let isItalic = node.classList.contains("ql-italic");
+            // Also check inline style if classes are not present.
+            if (!isBold && node.style && node.style.fontWeight) {
+              const weight = node.style.fontWeight;
+              if (weight === "bold" || parseInt(weight) >= 600) {
+                isBold = true;
+              }
+            }
+            if (!isItalic && node.style && node.style.fontStyle) {
+              const style = node.style.fontStyle;
+              if (style === "italic") {
+                isItalic = true;
+              }
+            }
+            let trailingSpaces = '';
+            let mainText = text;
+            let match = text.match(/(\s+)$/);
+            if (match) {
+              trailingSpaces = match[1];
+              mainText = text.slice(0, -trailingSpaces.length);
+            }
+            if (isBold && isItalic) {
+              return "***" + mainText + "***" + trailingSpaces;
+            } else if (isBold) {
+              return "**" + mainText + "**" + trailingSpaces;
+            } else if (isItalic) {
+              return "*" + mainText + "*" + trailingSpaces;
+            }
+            return text;
+          }
+          default:
+            return getInnerMarkdown(node, indentLevel);
+        }
+      }
+      return "";
+    }
+
+    // Process all child nodes of a given node.
+    function getInnerMarkdown(node, indentLevel) {
+      let result = "";
+      node.childNodes.forEach(child => {
+        result += convertNodeToMarkdown(child, indentLevel);
+      });
+      return result;
+    }
+
+    // DOM Elements
+    const inputEditor = document.querySelector('.input-box .ql-editor');
+    const outputElement = document.getElementById('output');
+    const copyButton = document.getElementById('copyButton');
+
+    // Update Markdown output in real time.
+    function updateMarkdown() {
+      const htmlContent = inputEditor.innerHTML;
+      try {
+        const markdown = convertToMarkdown(htmlContent);
+        outputElement.textContent = markdown;
+      } catch (e) {
+        outputElement.textContent = "Error converting content.";
+      }
+    }
+
+    // Listen for changes on the input (typing, paste, etc.).
+    inputEditor.addEventListener('input', updateMarkdown);
+
+    // Copy Markdown output to clipboard when the button is clicked.
+    copyButton.addEventListener('click', function() {
+      const markdown = outputElement.textContent;
+      navigator.clipboard.writeText(markdown).then(function() {
+        alert('Markdown copied to clipboard!');
+      }).catch(function() {
+        alert('Failed to copy text.');
+      });
+    });
+  </script>
+</body>
+</html>
