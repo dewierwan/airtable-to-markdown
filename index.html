@@ -15,16 +15,17 @@
     .container {
       display: flex;
       gap: 20px;
+      max-width: 100%;
     }
     .box {
       flex: 1;
       display: flex;
       flex-direction: column;
+      min-width: 0; /* Prevents flex items from overflowing */
     }
     .label {
       font-weight: bold;
       margin-bottom: 10px;
-      position: relative;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -34,26 +35,22 @@
       background-color: #fff;
       border: 1px solid #ccc;
       min-height: 300px;
+      height: calc(100vh - 100px); /* Dynamic height */
       padding: 10px;
       overflow-y: auto;
+      margin: 0;
     }
     /* Output Box Styling */
     .output-box .output-content {
       background-color: #eee;
       border: 1px solid #ccc;
       min-height: 300px;
+      height: calc(100vh - 100px); /* Dynamic height */
       padding: 10px;
       overflow-y: auto;
       font-family: monospace;
       white-space: pre-wrap;
-    }
-    /* Copy Button positioned in the top right of output label */
-    #copyButton {
-      position: absolute;
-      right: 0;
-      top: 0;
-      padding: 5px 10px;
-      font-size: 0.9em;
+      margin: 0;
     }
     #pastedNotification {
       color: #4CAF50;
@@ -75,7 +72,6 @@
     <div class="box output-box">
       <div class="label">
         Markdown Output
-        <button id="copyButton">Copy</button>
         <span id="pastedNotification">Copied!</span>
       </div>
       <!-- The output is rendered in a <pre> element for monospace display -->
@@ -238,7 +234,6 @@
     // DOM Elements
     const inputEditor = document.querySelector('.input-box .ql-editor');
     const outputElement = document.getElementById('output');
-    const copyButton = document.getElementById('copyButton');
 
     // Update Markdown output in real time.
     function updateMarkdown() {
@@ -261,11 +256,6 @@
 
     // Listen for changes on the input (typing, paste, etc.).
     inputEditor.addEventListener('input', updateMarkdown);
-
-    // Copy button as backup method
-    copyButton.addEventListener('click', function() {
-      navigator.clipboard.writeText(outputElement.textContent);
-    });
   </script>
 </body>
 </html>
