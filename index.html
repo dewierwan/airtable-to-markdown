@@ -241,12 +241,16 @@
     const inputEditor = document.querySelector('.input-box .ql-editor');
     const outputElement = document.getElementById('output');
 
-    // Update Markdown output in real time.
+    // Update Markdown output, copy to clipboard, and clear input.
     function updateMarkdown() {
       const htmlContent = inputEditor.innerHTML;
+      // Only process if there's actual content
+      if (htmlContent.trim() === "") return;
+      
       try {
         const markdown = convertToMarkdown(htmlContent);
         outputElement.textContent = markdown;
+        
         // Automatically copy to clipboard and show notification
         navigator.clipboard.writeText(markdown).then(() => {
           const notification = document.getElementById('pastedNotification');
@@ -254,14 +258,25 @@
           setTimeout(() => {
             notification.style.opacity = '0';
           }, 3000);
+          
+          // Clear the input after successful conversion and copying
+          setTimeout(() => {
+            inputEditor.innerHTML = "";
+          }, 500);
+        }).catch(err => {
+          console.error("Could not copy text: ", err);
         });
       } catch (e) {
+        console.error("Error converting content: ", e);
         outputElement.textContent = "Error converting content.";
       }
     }
 
-    // Listen for changes on the input (typing, paste, etc.).
-    inputEditor.addEventListener('input', updateMarkdown);
+    // Listen for paste event on the input.
+    inputEditor.addEventListener('paste', function(e) {
+      // Give the paste event time to complete before processing
+      setTimeout(updateMarkdown, 100);
+    });
   </script>
 </body>
 </html>
